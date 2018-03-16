@@ -1,7 +1,4 @@
-﻿  TimeUtils.cpp
-  RandomUtils.cpp
-  FoP_Task1c_SKELETON.cpp
-  ConsoleUtils.cpp
-  Generating Code...
+﻿  FoP_Task1c_SKELETON.cpp
+f:\mywork\fop\task 1c\spot and zombies\fop_task1c_skeleton.cpp(371): warning C4390: ';': empty controlled statement found; is this the intent?
   FoP_Task1c_Project.vcxproj -> F:\MyWork\FOP\Task 1c\Spot and Zombies\x64\Debug\FoP_Task1c_Project.exe
   FoP_Task1c_Project.vcxproj -> F:\MyWork\FOP\Task 1c\Spot and Zombies\x64\Debug\FoP_Task1c_Project.pdb (Partial PDB)
