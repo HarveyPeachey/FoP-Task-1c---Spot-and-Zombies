@@ -290,7 +290,17 @@ void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& me
 		cout << '\a';	//beep the alarm
 		mess = "CANNOT GO THERE!";
 		break;
-		// case PILL:
+	case HOLE:
+		spot.y += dy;	//go in that Y direction
+		spot.x += dx;	//go in that X direction
+		mess = "SPOT FELL INTO A HOLE";
+		break;
+	case PILL:
+		spot.y += dy;	//go in that Y direction
+		spot.x += dx;	//go in that X direction
+		cout << '\a';	//beep the alarm
+		mess = "SPOT ATE A PILL!";
+		break;
 	}
 }
 //---------------------------------------------------------------------------
