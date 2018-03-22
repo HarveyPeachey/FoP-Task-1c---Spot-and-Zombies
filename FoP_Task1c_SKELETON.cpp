@@ -1,4 +1,3 @@
-//include standard libraries
 #include <iostream>	
 #include <iomanip> 
 #include <conio.h> 
@@ -9,6 +8,8 @@
 #include <ctype.h>
 #include <ctime>
 #include <time.h>
+#include <vector>
+#include <fstream>
 
 using namespace std;
 
@@ -29,6 +30,7 @@ const char TUNNEL(' ');    	//tunnel
 const char WALL('#');    	//border
 const char HOLE('0');		//hole
 const char PILL('*');
+const char ZOMBIE('Z');
 //defining the command letters to move the spot on the maze
 const int  UP(72);			//up arrow
 const int  DOWN(80); 		//down arrow
@@ -44,9 +46,13 @@ struct Item {
 	char symbol;
 };
 
-struct Stats
+struct Player
 {
-	string name;
+	string user;
+	int score;
+	int livesRemaining;
+	int zombiesRemaining;
+	int pillsRemaining;
 };
 
 //---------------------------------------------------------------------------
@@ -56,35 +62,42 @@ struct Stats
 int main()
 {
 	//function declarations (prototypes)
-	void EntryScreen();
+	void EntryScreen(Player& info);
+	void openFile(Player& info);
 	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot);
 	void paintGame(const char g[][SIZEX], string mess);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
-	void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess);
+	void updateGameData(char g[][SIZEX], Item& spot, const int key, string& mess);
 	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item spot);
 	void endProgram();
+	void saveGame(Player& info, string& message);
 
 	//local variable declarations 
 	char grid[SIZEY][SIZEX];			//grid for display
 	char maze[SIZEY][SIZEX];			//structure of the maze
 
 	Item spot = { 0, 0, SPOT }; 		//spot's position and symbol
+	Item zombie = { 0, 0, ZOMBIE };
 
+
+	//	STATS FOR THE GAME ( no. of pills, zombies, lives )
+	Player info = { };
+	info.pillsRemaining = 8;
+	info.zombiesRemaining = 4;
+	info.livesRemaining = 5;
 
 	string message("LET'S START...");	//current message to player
-
-	string rem_lives("REMAINING LIVES: ");
-	string rem_zombies("ZOMBIES LEFT: ");
-	string rem_pills("PILLS LEFT: ");
-
 
 
 	//action...
 	Seed();								//seed the random number generator
 										//SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
-	EntryScreen();
+	EntryScreen(info);
+	openFile(info);
+
+
 	initialiseGame(grid, maze, spot);	//initialise grid (incl. walls and spot)
 	paintGame(grid, message);			//display game info, modified grid and messages
 	int key;							//current key selected by player
@@ -102,7 +115,7 @@ int main()
 		paintGame(grid, message);		//display game info, modified grid and messages
 	} while (!wantsToQuit(key));		//while user does not want to quit
 	endProgram();						//display final message
-
+	saveGame(info, message);
 	return 0;
 }
 
@@ -111,6 +124,18 @@ int main()
 //----- initialise game state
 //---------------------------------------------------------------------------
 
+void openFile(Player& info)
+{
+	ifstream file;
+	file.open(info.user + ".txt");
+
+	if (file) {
+		file >> info.user;
+		file >> info.score;
+
+		file.close();
+	}
+}
 void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot)
 { //initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
@@ -136,20 +161,20 @@ void setInitialMazeStructure(char maze[][SIZEX])
 	char initialMaze[SIZEY][SIZEX] 	//local array to store the maze structure
 		= {
 			{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' },
-			{ '#', 1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 1, '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-			{ '#', 1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 1, '#' },
-			{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' }
+	{ '#', 1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 1, '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', 1, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 1, '#' },
+	{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' }
 	};
 	//with '#' for wall, ' ' for tunnel, etc. 
 	//copy into maze structure with appropriate symbols
@@ -166,9 +191,11 @@ void setInitialMazeStructure(char maze[][SIZEX])
 				break;
 			case '0': maze[row][col] = HOLE;
 				break;
-			case '*': maze[row][col] = PILL;
+			case '*': 
+				maze[row][col] = PILL;
 				break;
-			case 1: maze[row][col] = 'Z';
+			case 1: maze[row][col] = ZOMBIE;
+				break;
 			}
 
 	//generate holes 
@@ -195,8 +222,8 @@ void setInitialMazeStructure(char maze[][SIZEX])
 		case HOLE:
 			maze[k][j] = HOLE;
 			break;
-		case 'Z':
-			maze[k][j] = 'Z';
+		case ZOMBIE:
+			maze[k][j] = ZOMBIE;
 			break;
 		};
 
@@ -226,10 +253,9 @@ void setInitialMazeStructure(char maze[][SIZEX])
 		case HOLE:
 			maze[a][b] = HOLE;
 			break;
-		case 'Z':
-			maze[a][b] = 'Z';
+		case ZOMBIE:
+			maze[a][b] = ZOMBIE;
 			break;
-
 		};
 
 	}
@@ -259,13 +285,12 @@ void placeItem(char g[][SIZEX], const Item item)
 { //place item at its new position in grid
 
 	g[item.y][item.x] = item.symbol;
-
 }
 
 //---------------------------------------------------------------------------
 //----- move items on the grid
 //---------------------------------------------------------------------------
-void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess)
+void updateGameData(char g[][SIZEX], Item& spot, const int key, string& mess)
 { //move spot in required direction
 	bool isArrowKey(const int k);
 	void setKeyDirection(int k, int& dx, int& dy);
@@ -302,7 +327,10 @@ void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& me
 		mess = "SPOT ATE A PILL!";
 		break;
 	}
+
 }
+
+
 //---------------------------------------------------------------------------
 //----- process key
 //---------------------------------------------------------------------------
@@ -355,7 +383,7 @@ bool wantsToQuit(const int key)
 //----- display info on screen
 //---------------------------------------------------------------------------
 
-void EntryScreen()
+void EntryScreen(Player& info)
 
 {
 	string filename;
@@ -367,22 +395,25 @@ void EntryScreen()
 
 	showMessage(clDarkGrey, clYellow, 10, 10, "   CS3 GROUP 3 - 2017/18   ");
 	showMessage(clDarkGrey, clYellow, 10, 11, "Alex Parkin-Coates 25028273");
-	showMessage(clDarkGrey, clYellow, 10, 12, "Harvey Peachy      27040030");
+	showMessage(clDarkGrey, clYellow, 10, 12, "Harvey Peachey     27040030");
 	showMessage(clDarkGrey, clYellow, 10, 13, "Micheal Turner     00000000");
 
 	showMessage(clDarkGrey, clYellow, 40, 6, "TO MOVE USE KEYBOARD ARROWS ");
 	showMessage(clDarkGrey, clYellow, 40, 7, "TO FREEZE ZOMBIES PRESS 'F' ");
 	showMessage(clDarkGrey, clYellow, 40, 8, "TO KILL ZOMBIES PRESS 'X'   ");
 	showMessage(clDarkGrey, clYellow, 40, 9, "TO QUIT ENTER 'Q'           ");
-
+	
 	showMessage(clDarkGrey, clYellow, 10, 17, "Enter name: ");
-
 	SelectTextColour(clRed);
-	if (getline(cin, filename));
+	
+	if (getline(cin, filename))
 	system("CLS");
 	string UserName(filename.substr(0, 20));
-	showMessage(clDarkGrey, clYellow, 40, 16, "CURRENT PLAYER: " + UserName);
+	showMessage(clDarkGrey, clYellow, 40, 16, "PLAYER'S NAME: " + UserName);
+	showMessage(clDarkGrey, clYellow, 40, 17, "PLAYER'S PREVIOUS BEST SCORE: ");
 
+	info.user = UserName;
+	
 }
 string tostring(int x)
 {	//convert an integer to a string
@@ -425,6 +456,13 @@ void paintGame(const char g[][SIZEX], string mess)
 	showMessage(clDarkGrey, clYellow, 40, 7, "TO FREEZE ZOMBIES PRESS 'F' ");
 	showMessage(clDarkGrey, clYellow, 40, 8, "TO KILL ZOMBIES PRESS 'X'   ");
 	showMessage(clDarkGrey, clYellow, 40, 9, "TO QUIT ENTER 'Q'           ");
+	
+
+
+	//TO DO:::::: CONVERT THE 3 SCORES BELOW TO STRINGS TO BE DISPLAYED...
+	showMessage(clDarkGrey, clYellow, 40, 12, "REMAINING LIVES: ");
+	showMessage(clDarkGrey, clYellow, 40, 13, "ZOMBIES LEFT: ");
+	showMessage(clDarkGrey, clYellow, 40, 14, "PILLS LEFT: ");
 
 	//print auxiliary messages if any
 	showMessage(clDarkGrey, clYellow, 0, 18, mess);	//display current message
@@ -572,6 +610,33 @@ void paintGrid(const char g[][SIZEX])
 	}
 }
 
+void saveGame(Player& info, string& message)
+{
+	ofstream file;
+	file.open(info.user + ".txt");
+
+	int lowestScore = -1;
+
+	if (info.pillsRemaining < info.score) 
+		lowestScore = info.pillsRemaining;
+
+	if (file) {
+		file <<
+			info.user << "\n" <<
+			lowestScore << "\n";
+
+
+		file.close();
+
+		message = "Game saved!";
+	}
+	else {
+		message = "Unable to save game!";
+	}
+
+}
+
+
 void endProgram()
 {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
@@ -580,7 +645,3 @@ void endProgram()
 
 	system("pause");	//hold output screen until a keyboard key is hit
 }
-
-
-
-
